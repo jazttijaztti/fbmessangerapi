@@ -1,0 +1,106 @@
+まずは、
+このリンクを踏んだら FBページのメッセンジャーが開くというリンクがある。
+それが
+m.me/XXXX(ページ固有の名前で管理者画面からわかる)
+
+これ。
+で、これにアクセスするとメッセンジャーが開き、
+挨拶文とかが出てくる。
+それを事前に登録するためにはコマンドを打ってリクエストしないといけない。
+まず、
+curl -X GET "https://graph.facebook.com/v2.6/me/messenger_profile?fields=<PROPERTIES_LIST>&access_token=<PAGE_ACCESS_TOKEN>"
+で、使うフィールドを登録する。
+get_startedとaccount_linking_urlを使いたかったら下記のように書く、
+アクセストークンは管理者面から取得する前提で(下記の文字列はランダムです)
+https://graph.facebook.com/v2.6/me/messenger_profile?fields=get_started,account_linking_url&access_token=EAAbDshxKaEwBAHnVhdWDAYYbEScr2eFnddWzflvAltzeGcjYzCA0r8ewKLdW9UHV6lC3HUOgnuP3qdkXsJ8wcE8xvvzlV9FsdfaL5cJZCSi76PIobv0BJe6pIG6mPZBiTjkIaFeqWTXZadsfasfCz0JVFjQzbrHWaYfmXcFS9tXjVZAzcMztAZDZD
+
+普通にURLで実行すればいい。
+ちなみにアクセストークンは自分で決めたものではなくて長い暗号文字列の方。
+
+URLを実行すると
+{
+   "data": [
+      
+   ]
+}
+とブラウザに表示sれる
+つまり初期値は何もなし。
+
+初期値の更新は
+
+curl -X POST -H "Content-Type: application/json" -d '{
+  "<PROPERTY_NAME>": "<NEW_PROPERTY_VALUE>",
+  "<PROPERTY_NAME>": "<NEW_PROPERTY_VALUE>",
+  ...
+}' "https://graph.facebook.com/v2.6/me/messenger_profile?access_token=<PAGE_ACCESS_TOKEN>"
+を行う、
+で、このプロパティ名と値に関しては
+https://developers.facebook.com/docs/messenger-platform/reference/messenger-profile-api/#profile_properties
+ここの下の方に書いてあります。
+
+例えば、
+curl -X POST -H "Content-Type: application/json" -d '{
+  "account_linking_url": "https://apiURI.glitch.me/webhook",
+    "get_started":{
+        "payload":"hello"
+   }
+}' "https://graph.facebook.com/v2.6/me/messenger_profile?access_token= EAAbDshxKaEwBAHnVhdWDAYYbEScr2eFnddasfsfsWzflvAltzeGcjYzCA0r8ewKLdW9UHV6lC3HUOgnuP3qdkXsJ8wcE8xvvzlV9FL5cJZCSi76PIobv0BJe6pIG6mPZBiTjkIaFeqWTXZCz0JVFjQzbrHWaYfmXcFS9tXjVZAzcMztAZDZD"
+
+ちなみに、
+access_tokenで、どのFBページかはわかってるので、
+どのFBにフォロした時にどんな言葉で挨拶してどこにコールバックするのかを指定している。
+
+というわけで上記curlをnode.jsで設定する(実行する)
+function setFBMessangerDefault(){
+  let request_body = {
+    "get_started": {
+      "payload": "承認ありがとうございます。XXXXXです。"
+    },
+    "account_linking_url": "https://apiURI.glitch.me/webhook"
+  } 
+  console.log("動いた");
+request({
+  "url" : "https://graph.facebook.com/v2.6/me/messenger_profile",
+  "qs": {access_token: PAGE_ACCESS_TOKEN },
+  "method": "POST",
+  "json": request_body
+}, (err, res ,body) => {
+    if (!err) {
+      console.log('初期値の登録に成功しました。');
+      console.log(body)
+      
+    } else {
+      console.error("初期値の登録ができなかった" + err);
+    }
+});
+}
+適当に実行して下さい。
+これで登録ができます。
+successって出るはず。
+
+https://graph.facebook.com/v2.6/me/messenger_profile?fields=account_linking_url,get_started&access_token=EAAbDshxKaEwBAHnVhdWDAYYbEScr2eFnddWzflvAltzeGcjYzCA0r8ewKLdW9UHV6lC3HUOgnuP3qdkXsJ8wcE8xvvzlV9FL5cJZCSi76PIobv0BJe6pIG6mPZBiTjkIaFeqWTXZCz0JVFjQzbrHWaYfmXcFS9tXjVZAzcMztAZDZD
+
+もう一度さっきの
+これを実行すると
+さっきは
+{
+   "data": [
+      
+   ]
+}
+だったのが、
+{
+   "data": [
+      {
+         "account_linking_url": "https://apiURI.glitch.me/webhook",
+         "get_started": {
+            "payload": "承認ありがとうございます。XXXXXです。"
+         }
+      }
+   ]
+}
+とかになっているはず。
+つまり更新されている。
+
+その前提でapp.jsを動かす。
+/webhookがFBの管理者画面に登録されてる前提
